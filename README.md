@@ -83,6 +83,11 @@ It's pretty simple, just:
 ./ignite.sh
 ```
 
+To cut down on the period of the iteration cycle, you can skip replacing the liveboot image onto the PiKVM:
+
+```bash
+./ignite.sh --skip-liveboot-wipe
+```
 
 ## Acknowledgements
 
