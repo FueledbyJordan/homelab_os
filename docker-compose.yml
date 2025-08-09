@@ -1,0 +1,29 @@
+---
+configs:
+  caddyfile:
+    content: |
+      :8080 {
+        root * /srv
+        file_server browse
+
+        header {
+          X-Content-Type-Options nosniff
+          X-Frame-Options DENY
+          X-XSS-Protection "1; mode=block"
+        }
+      
+        encode gzip
+        try_files {path} {path}/ =404
+      }
+
+services:
+  fileserver:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - ./files:/srv:ro

@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+error() {
+  declare RED='\033[0;31m'
+  declare NC='\033[0m'
+  printf "❌ ${RED}${1}${NC}\n"
+}
+
+fatal() {
+  error "${1}"
+  exit 1
+}
+
+warn() {
+  declare YELLOW='\033[0;33m'
+  declare NC='\033[0m'
+  printf "⚠️ ${YELLOW}${1}${NC}\n"
+}
+
+usage() {
+  echo "Usage: $0 [OPTIONS]"
+  echo 'Options:'
+  echo '  --skip-liveboot-wipe    Skip the liveboot wipe process'
+  echo '  -h, --help              Display this help message'
+  exit 1
+}
+
+main() {
+  declare skip_liveboot_wipe=false
+  
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --skip-liveboot-wipe)
+        skip_liveboot_wipe=true
+        shift
+        ;;
+      -h|--help)
+        usage
+        ;;
+      *)
+        echo "Unknown option: $1"
+        usage
+        ;;
+    esac
+  done
+
+  echo '✅ Performing runtime environment checks'
+  declare -a required_tools=('op' 'docker' 'grep' 'cat' 'envsubst' 'wget' 'rm' 'curl' 'ssh')
+  for tool in "${required_tools[@]}"
+  do
+    command -v "${tool}" &>/dev/null || fatal "${tool} is not installed"
+  done
+
+  declare pikvm_hostname="$(op read 'op://homelab/pikvm/hostname')"
+  declare pikvm_api_credentials="$(op read 'op://homelab/pikvm/username'):$(op read 'op://homelab/pikvm/password')"
+  declare user="$(op read 'op://homelab/server/username')"
+  declare host="$(op read 'op://homelab/server/hostname')"
+  
+  [ ! -f .env ] && fatal '.env file does not exist!'
+  
+  echo '✅ Reading variables from .env file'
+  export $(grep -v '^#' .env | xargs)
+  
+  [[ -z ${inject_file_server+x} ]] && fatal 'inject_file_server is unset. Did you set it in .env?'
+  [[ -z ${drive0+x} ]] && fatal 'drive0 is unset. Did you set it in .env?'
+  [[ -z ${drive1+x} ]] && fatal 'drive1 is unset. Did you set it in .env?'
+  [[ -z ${drive2+x} ]] && fatal 'drive2 is unset. Did you set it in .env?'
+  [[ -z ${tailscale_version+x} ]] && fatal 'tailscale_version is unset. Did you set it in .env?'
+  [[ -z ${tailscale_verification_hash+x} ]] && fatal 'tailscale_verification_hash is unset. Did you set it in .env?'
+
+  echo '✅ Starting up local file server...'
+  docker compose up -d &>/dev/null
+  
+  echo '✅ Generating ignition files...'
+  cat bootstrap.bu.tpl | envsubst | op inject | docker run --rm -i quay.io/coreos/butane:release > files/bootstrap.ign
+  cat coreos.bu.tpl | envsubst | op inject | docker run --rm -i quay.io/coreos/butane:release > files/coreos.ign
+  
+  [ ! -f ./files/${fcos_iso} ] && \
+    echo '✅ Fetching CoreOS ISO...' && \
+    wget -P ./files "${fcos_iso_url}"
+  
+  rm -f "./files/${embedded_fcos_iso}"
+  
+  # TODO: disconnect MSD in live environment following successful image
+  echo '✅ Customizing CoreOS live boot environment...'
+  cat files/bootstrap.ign | docker run --rm -i --user $(id -u):$(id -g) -v ./files:/files quay.io/coreos/coreos-installer:release iso ignition embed -o "/files/${embedded_fcos_iso}" "/files/${fcos_iso}"
+  
+  echo '✅ Disconnecting mass storage device...'
+  
+  curl -s -o /dev/null -X POST -k \
+    -u "${pikvm_api_credentials}" \
+    "https://${pikvm_hostname}/api/msd/set_connected?connected=0"
+  
+  if ! $skip_liveboot_wipe; then
+    echo '✅ Cleaning up old liveboot image...'
+    curl -s -o /dev/null -X POST -k \
+      -u "${pikvm_api_credentials}" \
+      "https://${pikvm_hostname}/api/msd/remove?image=coreos-liveboot.iso"
+    
+    echo '✅ Waiting for image to be cleaned...'
+    sleep 3
+    
+    echo '✅ Writing new liveboot image...'
+    pushd ./files &>/dev/null && \
+      curl -s -o /dev/null --progress-bar -X POST -k \
+        --progress-bar \
+        -u "${pikvm_api_credentials}" \
+        -H 'Accept: */*' \
+        -H 'Accept-Encoding: gzip, deflate, br, zstd' \
+        -H 'Connection: keep-alive' \
+        -H 'Priority: u=0' \
+        --data-binary @${embedded_fcos_iso} \
+        "https://${pikvm_hostname}/api/msd/write?prefix=&image=coreos-liveboot.iso&remove_incomplete=1" && \
+    popd &>/dev/null
+    
+    echo '✅ Activating new liveboot image...'
+    curl -s -o /dev/null -X POST -k \
+      -u "${pikvm_api_credentials}" \
+      "https://${pikvm_hostname}/api/msd/set_params?image=coreos-liveboot.iso&cdrom=0"
+  fi
+  
+  echo '✅ Connecting mass storage device...'
+  curl -s -o /dev/null -X POST -k \
+    -u "${pikvm_api_credentials}" \
+    "https://${pikvm_hostname}/api/msd/set_connected?connected=1"
+  
+  echo '✅ Attempting to reboot target host...'
+  # TODO: on failure of reboot, issue pikvm reboot; need to acquire a switched pdu
+  ssh "${user}@${host}" "sudo reboot" &>/dev/null || \
+    error "Failed to reboot ${host}, you will need to manually reboot"
+  
+  rm -f "./files/${embedded_fcos_iso}"
+  
+  # TODO: on completion of first boot, run job to do this
+  warn 'ensure to clean up contents of ./files'
+  warn 'remember to docker compose down'
+  warn 'remember to clean up any firewall rules made'
+}
+
+fcos_version='42.20250705.3.0'
+fcos_iso="fedora-coreos-${fcos_version}-live-iso.x86_64.iso"
+fcos_iso_url="https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/${fcos_version}/x86_64/${fcos_iso}"
+embedded_fcos_iso="embedded-${fcos_iso}"
+
+main "${@}"

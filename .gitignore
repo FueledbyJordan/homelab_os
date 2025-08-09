@@ -1,0 +1,4 @@
+*.iso
+.env
+files/*
+!files/.gitkeep
