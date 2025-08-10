@@ -12,6 +12,7 @@ passwd:
         - wheel
         - docker
 
+
 storage:
   disks:
     - device: $drive0
@@ -47,12 +48,14 @@ storage:
         - label: data-2
           number: 1
 
+
   raid:
     - name: md-data
       level: raid1
       devices:
         - /dev/disk/by-partlabel/data-1
         - /dev/disk/by-partlabel/data-2
+
 
   filesystems:
     - device: /dev/md/md-data
@@ -85,16 +88,22 @@ storage:
       format: xfs
       with_mount_unit: true
 
+
   directories:
     - path: /etc/sysupdate.d
     - path: /var/lib/extensions
     - path: /var/lib/extensions.d
+
 
   files:
     - path: /etc/hostname
       mode: 0644
       contents:
         inline: helium
+
+    - path: /etc/hosts
+      append:
+        - inline: {{ op://homelab/nfs/IP }} {{ op://homelab/nfs/URL }}
 
     - path: /etc/profile.d/zz-default-editor.sh
       overwrite: true
@@ -184,3 +193,15 @@ systemd:
         
         [Install]
         WantedBy=multi-user.target
+
+    - name: var-nfs.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Before=remote-fs.target
+        [Mount]
+        What={{ op://homelab/nfs/URL }}:{{ op://homelab/nfs/path }}
+        Where=/var/nfs
+        Type=nfs
+        [Install]
+        WantedBy=remote-fs.target
