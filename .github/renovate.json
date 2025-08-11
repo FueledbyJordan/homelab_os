@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "regexManagers": [
+    {
+      "fileMatch": ["^ignite\\.sh$"],
+      "matchStrings": [
+        "fcos_version='(?<currentValue>\\d+\\.\\d+\\.\\d+\\.\\d+)'"
+      ],
+      "depNameTemplate": "fedora-coreos",
+      "packageNameTemplate": "fedora-coreos",
+      "datasourceTemplate": "custom.coreos"
+    }
+  ],
+  "customDatasources": {
+    "coreos": {
+      "defaultRegistryUrlTemplate": "https://builds.coreos.fedoraproject.org/streams/stable.json",
+      "format": "json",
+      "transformTemplates": [
+        "{\"releases\": [{\"version\": $.architectures.x86_64.artifacts.metal.release}]}"
+      ]
+    }
+  },
+  "packageRules": [
+    {
+      "matchDatasources": ["custom.coreos"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<compatability>\\d+)\\.(?<patch>\\d+)$",
+      "branchTopic": "fedora-coreos-{{newValue}}"
+    }
+  ]
+}
