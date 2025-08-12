@@ -5,7 +5,7 @@ set -euo pipefail
 error() {
   declare RED='\033[0;31m'
   declare NC='\033[0m'
-  printf "❌ ${RED}${1}${NC}\n"
+  printf '❌ %s%s%s\\n' "${RED}" "${1}" "${NC}"
 }
 
 fatal() {
@@ -16,7 +16,7 @@ fatal() {
 warn() {
   declare YELLOW='\033[0;33m'
   declare NC='\033[0m'
-  printf "⚠️ ${YELLOW}${1}${NC}\n"
+  printf '⚠️ %s%s%s\\n' "${YELLOW}" "${1}" "${NC}"
 }
 
 usage() {
@@ -53,14 +53,16 @@ main() {
     command -v "${tool}" &>/dev/null || fatal "${tool} is not installed"
   done
 
-  declare pikvm_hostname="$(op read 'op://homelab/pikvm/hostname')"
-  declare pikvm_api_credentials="$(op read 'op://homelab/pikvm/username'):$(op read 'op://homelab/pikvm/password')"
-  declare user="$(op read 'op://homelab/server/username')"
-  declare host="$(op read 'op://homelab/server/hostname')"
+  pikvm_hostname="$(op read 'op://homelab/pikvm/hostname')"
+  pikvm_api_credentials="$(op read 'op://homelab/pikvm/username'):$(op read 'op://homelab/pikvm/password')"
+  user="$(op read 'op://homelab/server/username')"
+  host="$(op read 'op://homelab/server/hostname')"
   
   [ ! -f .env ] && fatal '.env file does not exist!'
   
   echo '✅ Reading variables from .env file'
+  # deliberate word splitting to ensure env is properly set
+  # shellcheck disable=2046
   export $(grep -v '^#' .env | xargs)
   
   [[ -z ${inject_file_server+x} ]] && fatal 'inject_file_server is unset. Did you set it in .env?'
@@ -85,7 +87,7 @@ main() {
   
   # TODO: disconnect MSD in live environment following successful image
   echo '✅ Customizing CoreOS live boot environment...'
-  cat files/bootstrap.ign | docker run --rm -i --user $(id -u):$(id -g) -v ./files:/files quay.io/coreos/coreos-installer:release iso ignition embed -o "/files/${embedded_fcos_iso}" "/files/${fcos_iso}"
+  cat files/bootstrap.ign | docker run --rm -i --user "$(id -u):$(id -g)" -v ./files:/files quay.io/coreos/coreos-installer:release iso ignition embed -o "/files/${embedded_fcos_iso}" "/files/${fcos_iso}"
   
   echo '✅ Disconnecting mass storage device...'
   

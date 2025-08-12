@@ -1,7 +1,7 @@
 name: renovate
 on:
   schedule:
-    - cron: '0 4,5 * * * Mon'
+    - cron: '0 12,14 * * 1'
 jobs:
   renovate:
     runs-on: ubuntu-latest
