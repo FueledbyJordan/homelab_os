@@ -66,11 +66,9 @@ main() {
   export $(grep -v '^#' .env | xargs)
   
   [[ -z ${inject_file_server+x} ]] && fatal 'inject_file_server is unset. Did you set it in .env?'
-  [[ -z ${drive0+x} ]] && fatal 'drive0 is unset. Did you set it in .env?'
-  [[ -z ${drive1+x} ]] && fatal 'drive1 is unset. Did you set it in .env?'
-  [[ -z ${drive2+x} ]] && fatal 'drive2 is unset. Did you set it in .env?'
-  [[ -z ${tailscale_version+x} ]] && fatal 'tailscale_version is unset. Did you set it in .env?'
-  [[ -z ${tailscale_verification_hash+x} ]] && fatal 'tailscale_verification_hash is unset. Did you set it in .env?'
+  [[ -z ${inject_drive0+x} ]] && fatal 'inject_drive0 is unset. Did you set it in .env?'
+  [[ -z ${inject_drive1+x} ]] && fatal 'inject_drive1 is unset. Did you set it in .env?'
+  [[ -z ${inject_drive2+x} ]] && fatal 'inject_drive2 is unset. Did you set it in .env?'
 
   echo '✅ Starting up local file server...'
   docker compose up -d &>/dev/null

@@ -15,7 +15,7 @@ passwd:
 
 storage:
   disks:
-    - device: $drive0
+    - device: $inject_drive0
       wipe_table: false
       partitions:
         - label: root
@@ -38,12 +38,12 @@ storage:
         - label: log
           number: 8
 
-    - device: $drive1
+    - device: $inject_drive1
       partitions:
         - label: data-1
           number: 1
 
-    - device: $drive2
+    - device: $inject_drive2
       partitions:
         - label: data-2
           number: 1
