@@ -18,4 +18,4 @@ storage:
         inline: |
           ignition-url: $inject_file_server/coreos.ign
           insecure-ignition: true
-          dest-device: $drive0
+          dest-device: $inject_drive0

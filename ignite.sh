@@ -3,9 +3,9 @@
 set -euo pipefail
 
 error() {
-  declare RED='\033[0;31m'
-  declare NC='\033[0m'
-  printf '❌ %s%s%s\\n' "${RED}" "${1}" "${NC}"
+  declare RED=$'\033[0;31m'
+  declare NC=$'\033[0m'
+  printf '❌ %s%s%s\n' "${RED}" "${1}" "${NC}"
 }
 
 fatal() {
@@ -14,9 +14,9 @@ fatal() {
 }
 
 warn() {
-  declare YELLOW='\033[0;33m'
-  declare NC='\033[0m'
-  printf '⚠️ %s%s%s\\n' "${YELLOW}" "${1}" "${NC}"
+  declare YELLOW=$'\033[0;33m'
+  declare NC=$'\033[0m'
+  printf '⚠️ %s%s%s\n' "${YELLOW}" "${1}" "${NC}"
 }
 
 usage() {
@@ -146,7 +146,7 @@ embedded_fcos_iso="embedded-${fcos_iso}"
 
 # TODO: add this version to renovate
 # Obtained from https://github.com/travier/fedora-sysexts/releases/tag/tailscale on 2025-08-08.
-tailscale_version='0-1.86.2-1-42'
-tailscale_verification_hash='652655ec2430f76b64ecb236ab6c1d603ea374c62615c5e8d15401f1c5f05c40'
+export tailscale_version='0-1.86.2-1-42'
+export tailscale_verification_hash='652655ec2430f76b64ecb236ab6c1d603ea374c62615c5e8d15401f1c5f05c40'
 
 main "${@}"

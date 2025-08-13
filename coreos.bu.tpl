@@ -122,6 +122,35 @@ storage:
       contents:
         inline: "{{ op://homelab/tailscale ephemeral authkey/credential }}?preauthorized=true"
 
+    - path: /etc/yum.repos.d/rancher-k3s-common.repo
+      mode: 0644
+      contents:
+        inline: |
+          [rancher-k3s-common-stable]
+          name=Rancher K3s Common (stable)
+          baseurl=https://rpm.rancher.io/k3s/stable/common/coreos/noarch
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=0
+          gpgkey=https://rpm.rancher.io/public.key  
+
+    - path: /usr/local/bin/k3s
+      overwrite: true
+      mode: 0755
+      contents:
+        source: "https://github.com/k3s-io/k3s/releases/download/v1.33.3%2Bk3s1/k3s"
+        verification:
+          hash: "sha256-f03cad6610cf5b2903d8a9ac3d6716690e53dab461b09c07b0c913a262166abc"
+
+    - path: /etc/rancher/k3s/kubelet.config
+      mode: 0644
+      contents:
+        inline: |
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          kind: KubeletConfiguration
+          shutdownGracePeriod: 60s
+          shutdownGracePeriodCriticalPods: 10s
+
 
 systemd:
   units:
@@ -205,3 +234,71 @@ systemd:
         Type=nfs
         [Install]
         WantedBy=remote-fs.target
+
+    - name: rpm-ostree-install-k3s-selinux.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install k3s dependencies
+        Wants=network-online.target
+        After=network-online.target
+        Before=zincati.service
+        ConditionPathExists=|!/usr/share/selinux/packages/k3s.pp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes k3s-selinux
+
+        [Install]
+        WantedBy=multi-user.target 
+
+    - name: k3s.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Run K3s
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=notify
+        EnvironmentFile=-/etc/default/%N
+        EnvironmentFile=-/etc/sysconfig/%N
+        EnvironmentFile=-/etc/systemd/system/%N.env
+        KillMode=process
+        Delegate=yes
+        LimitNOFILE=1048576
+        LimitNPROC=infinity
+        LimitCORE=infinity
+        TasksMax=infinity
+        TimeoutStartSec=0
+        Restart=always
+        RestartSec=5s
+        ExecStartPre=-/sbin/modprobe br_netfilter
+        ExecStartPre=-/sbin/modprobe overlay
+        ExecStart=/usr/local/bin/k3s server --kubelet-arg="config=/etc/rancher/k3s/kubelet.config"
+
+        [Install]
+        WantedBy=multi-user.target 
+
+    # Node shutdown leaves pods with status.phase=Failed and status.reason=Shutdown,
+    # so delete them automatically on startup.
+    # This may delete some pods that failed for other reasons, but --field-selector doesn't
+    # currently support status.reason, so it's the best we can do.
+    - name: k3s-cleanup-shutdown-pods.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Cleanup pods terminated by node shutdown
+        Wants=k3s.service
+
+        [Service]
+        Type=oneshot
+        Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        ExecStart=/usr/local/bin/k3s kubectl delete pods --field-selector status.phase=Failed -A --ignore-not-found=true
+        Restart=on-failure
+        RestartSec=30
+
+        [Install]
+        WantedBy=multi-user.target

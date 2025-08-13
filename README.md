@@ -92,3 +92,4 @@ To cut down on the period of the iteration cycle, you can skip replacing the liv
 ## Acknowledgements
 
  - [Timothée Ravier's](https://github.com/travier) work on [systemd-sysext on CoreOS](https://extensions.fcos.fr)
+ - [Will Daly's guide](https://devnonsense.com/posts/k3s-on-fedora-coreos-bare-metal/#install-k3s) on installing k3s on CoreOS.
