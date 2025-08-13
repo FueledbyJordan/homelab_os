@@ -29,7 +29,7 @@ usage() {
 
 main() {
   declare skip_liveboot_wipe=false
-  
+
   while [[ $# -gt 0 ]]; do
     case $1 in
       --skip-liveboot-wipe)
@@ -57,14 +57,14 @@ main() {
   pikvm_api_credentials="$(op read 'op://homelab/pikvm/username'):$(op read 'op://homelab/pikvm/password')"
   user="$(op read 'op://homelab/server/username')"
   host="$(op read 'op://homelab/server/hostname')"
-  
+
   [ ! -f .env ] && fatal '.env file does not exist!'
-  
+
   echo '✅ Reading variables from .env file'
   # deliberate word splitting to ensure env is properly set
   # shellcheck disable=2046
   export $(grep -v '^#' .env | xargs)
-  
+
   [[ -z ${inject_file_server+x} ]] && fatal 'inject_file_server is unset. Did you set it in .env?'
   [[ -z ${inject_drive0+x} ]] && fatal 'inject_drive0 is unset. Did you set it in .env?'
   [[ -z ${inject_drive1+x} ]] && fatal 'inject_drive1 is unset. Did you set it in .env?'
@@ -72,36 +72,36 @@ main() {
 
   echo '✅ Starting up local file server...'
   docker compose up -d &>/dev/null
-  
+
   echo '✅ Generating ignition files...'
   cat bootstrap.bu.tpl | envsubst | op inject | docker run --rm -i quay.io/coreos/butane:release > files/bootstrap.ign
   cat coreos.bu.tpl | envsubst | op inject | docker run --rm -i quay.io/coreos/butane:release > files/coreos.ign
-  
+
   [ ! -f ./files/${fcos_iso} ] && \
     echo '✅ Fetching CoreOS ISO...' && \
     wget -P ./files "${fcos_iso_url}"
-  
+
   rm -f "./files/${embedded_fcos_iso}"
-  
+
   # TODO: disconnect MSD in live environment following successful image
   echo '✅ Customizing CoreOS live boot environment...'
   cat files/bootstrap.ign | docker run --rm -i --user "$(id -u):$(id -g)" -v ./files:/files quay.io/coreos/coreos-installer:release iso ignition embed -o "/files/${embedded_fcos_iso}" "/files/${fcos_iso}"
-  
+
   echo '✅ Disconnecting mass storage device...'
-  
+
   curl -s -o /dev/null -X POST -k \
     -u "${pikvm_api_credentials}" \
     "https://${pikvm_hostname}/api/msd/set_connected?connected=0"
-  
+
   if ! $skip_liveboot_wipe; then
     echo '✅ Cleaning up old liveboot image...'
     curl -s -o /dev/null -X POST -k \
       -u "${pikvm_api_credentials}" \
       "https://${pikvm_hostname}/api/msd/remove?image=coreos-liveboot.iso"
-    
+
     echo '✅ Waiting for image to be cleaned...'
     sleep 3
-    
+
     echo '✅ Writing new liveboot image...'
     pushd ./files &>/dev/null && \
       curl -s -o /dev/null --progress-bar -X POST -k \
@@ -114,25 +114,25 @@ main() {
         --data-binary @${embedded_fcos_iso} \
         "https://${pikvm_hostname}/api/msd/write?prefix=&image=coreos-liveboot.iso&remove_incomplete=1" && \
     popd &>/dev/null
-    
+
     echo '✅ Activating new liveboot image...'
     curl -s -o /dev/null -X POST -k \
       -u "${pikvm_api_credentials}" \
       "https://${pikvm_hostname}/api/msd/set_params?image=coreos-liveboot.iso&cdrom=0"
   fi
-  
+
   echo '✅ Connecting mass storage device...'
   curl -s -o /dev/null -X POST -k \
     -u "${pikvm_api_credentials}" \
     "https://${pikvm_hostname}/api/msd/set_connected?connected=1"
-  
+
   echo '✅ Attempting to reboot target host...'
   # TODO: on failure of reboot, issue pikvm reboot; need to acquire a switched pdu
   ssh "${user}@${host}" "sudo reboot" &>/dev/null || \
     error "Failed to reboot ${host}, you will need to manually reboot"
-  
+
   rm -f "./files/${embedded_fcos_iso}"
-  
+
   # TODO: on completion of first boot, run job to do this
   warn 'ensure to clean up contents of ./files'
   warn 'remember to docker compose down'

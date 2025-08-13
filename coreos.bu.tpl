@@ -132,7 +132,7 @@ storage:
           enabled=1
           gpgcheck=1
           repo_gpgcheck=0
-          gpgkey=https://rpm.rancher.io/public.key  
+          gpgkey=https://rpm.rancher.io/public.key
 
     - path: /usr/local/bin/k3s
       overwrite: true
@@ -202,7 +202,7 @@ systemd:
         [Unit]
         Description=Perform headless login to tailscale
         After=tailscaled.service
-        
+
         [Service]
         Type=oneshot
         ExecStart=-/usr/bin/tailscale up --authkey='file:/etc/tailscale.authkey' --advertise-tags='tag:{{ op://homelab/tailscale ephemeral authkey/advertise-tag }}'
@@ -215,11 +215,11 @@ systemd:
         [Unit]
         Description=Watch tailscaled socket to trigger tailscale login
         After=tailscaled.service
-        
+
         [Path]
         PathExists=/run/tailscale/tailscaled.sock
         Unit=tailscale-up.service
-        
+
         [Install]
         WantedBy=multi-user.target
 
@@ -251,7 +251,7 @@ systemd:
         ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes k3s-selinux
 
         [Install]
-        WantedBy=multi-user.target 
+        WantedBy=multi-user.target
 
     - name: k3s.service
       enabled: true
@@ -280,7 +280,7 @@ systemd:
         ExecStart=/usr/local/bin/k3s server --kubelet-arg="config=/etc/rancher/k3s/kubelet.config"
 
         [Install]
-        WantedBy=multi-user.target 
+        WantedBy=multi-user.target
 
     # Node shutdown leaves pods with status.phase=Failed and status.reason=Shutdown,
     # so delete them automatically on startup.

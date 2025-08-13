@@ -33,7 +33,7 @@ My needs for my homelab are pretty small.  I run something like 20 services.  At
 
 Historically, I have managed all services in docker compose.  My previous approach was to have a cronjob that runs once a week to remind me to update my containers.  About once a month, I would run a premade script to do an upgrade.  This ratio of four alerts to one action is not desirable.  In fact, it's not desirable to get a notification at all; instead it would be preferable that the services automatically upgrade, and rollback and notify on failure.  This is a perfectly kubernetes shaped problem.
 
-For the operating system, I would upgrade once every couple of years.  I would put it off because it was painful to upgrade.  I would run some RHEL provided script, and then go modify my ansible playbooks that hardened the OS.  This caused downtime and usually occupied half of a precious weekend day.  This is where an OS such as CoreOS comes in.  The chromeOS-like approach of automatic updates on a minimal surface area is appealing to me.  I like the idea of easy rollbacks as well.  
+For the operating system, I would upgrade once every couple of years.  I would put it off because it was painful to upgrade.  I would run some RHEL provided script, and then go modify my ansible playbooks that hardened the OS.  This caused downtime and usually occupied half of a precious weekend day.  This is where an OS such as CoreOS comes in.  The chromeOS-like approach of automatic updates on a minimal surface area is appealing to me.  I like the idea of easy rollbacks as well.
 
 
 ### Have fun along the way
