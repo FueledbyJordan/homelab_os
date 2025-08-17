@@ -239,7 +239,7 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Description=Install k3s dependencies
+        Description=Install k3s selinux
         Wants=network-online.target
         After=network-online.target
         Before=zincati.service
@@ -249,6 +249,24 @@ systemd:
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes k3s-selinux
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: rpm-ostree-install-helm.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install helm
+        Wants=network-online.target
+        After=network-online.target
+        Before=zincati.service
+        ConditionPathExists=|!/usr/bin/helm
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes helm
 
         [Install]
         WantedBy=multi-user.target
