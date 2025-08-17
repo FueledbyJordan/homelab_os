@@ -4,9 +4,10 @@ This sets up my homelab that runs [Fedora CoreOS](https://fedoraproject.org/core
 
 This is a fully unattended install of CoreOS that currently:
 * sets up an ephemeral tailscale node.
+* provisions k3s, installs helm
+* sets up nfs mount
 
 and will:
-* automatically provision k3s
 * automatically set up argocd for fetching custom helm charts
 
 
