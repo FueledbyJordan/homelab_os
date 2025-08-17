@@ -59,9 +59,9 @@ storage:
 
   filesystems:
     - device: /dev/md/md-data
-      path: /var/data
-      label: data
+      path: /var
       format: xfs
+      wipe_filesystem: false
       with_mount_unit: true
 
     - device: /dev/disk/by-partlabel/swap
@@ -80,12 +80,14 @@ storage:
       path: /var/backup
       format: xfs
       label: backup
+      wipe_filesystem: false
       with_mount_unit: true
 
     - device: /dev/disk/by-partlabel/log
       path: /var/log
       label: log
       format: xfs
+      wipe_filesystem: false
       with_mount_unit: true
 
 
@@ -112,12 +114,14 @@ storage:
           export EDITOR=vim
 
     - path: /var/lib/extensions/tailscale.raw
+      overwrite: true
       contents:
         source: https://extensions.fcos.fr/extensions/tailscale/tailscale-$tailscale_version-x86-64.raw
         verification:
           hash: sha256-$tailscale_verification_hash
 
     - path: /etc/tailscale.authkey
+      overwrite: true
       mode: 0400
       contents:
         inline: "{{ op://homelab/tailscale ephemeral authkey/credential }}?preauthorized=true"
@@ -150,6 +154,10 @@ storage:
           kind: KubeletConfiguration
           shutdownGracePeriod: 60s
           shutdownGracePeriodCriticalPods: 10s
+
+    # skip traefik install
+    - path: /var/lib/rancher/k3s/server/manifests/traefik.yaml.skip
+      mode: 0644
 
 
 systemd:
