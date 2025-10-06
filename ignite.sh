@@ -139,7 +139,7 @@ main() {
   warn 'remember to clean up any firewall rules made'
 }
 
-fcos_version='42.20250901.3.0'
+fcos_version='42.20250914.3.0'
 fcos_iso="fedora-coreos-${fcos_version}-live-iso.x86_64.iso"
 fcos_iso_url="https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/${fcos_version}/x86_64/${fcos_iso}"
 embedded_fcos_iso="embedded-${fcos_iso}"
