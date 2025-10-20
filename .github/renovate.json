@@ -1,14 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "baseBranches": ["main"],
+  "extends": [
+    "config:recommended"
+  ],
+  "baseBranchPatterns": [
+    "main"
+  ],
   "rebaseWhen": "conflicted",
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "automergeStrategy": "merge-commit",
   "prHourlyLimit": 2,
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["^ignite\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ignite\\.sh$/"
+      ],
       "matchStrings": [
         "fcos_version='(?<currentValue>\\d+\\.\\d+\\.\\d+\\.\\d+)'"
       ],
@@ -28,7 +37,9 @@
   },
   "packageRules": [
     {
-      "matchDatasources": ["custom.coreos"],
+      "matchDatasources": [
+        "custom.coreos"
+      ],
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<compatability>\\d+)\\.(?<patch>\\d+)$",
       "branchTopic": "fedora-coreos-{{newValue}}"
     }
