@@ -144,9 +144,4 @@ fcos_iso="fedora-coreos-${fcos_version}-live-iso.x86_64.iso"
 fcos_iso_url="https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/${fcos_version}/x86_64/${fcos_iso}"
 embedded_fcos_iso="embedded-${fcos_iso}"
 
-# TODO: add this version to renovate
-# Obtained from https://github.com/travier/fedora-sysexts/releases/tag/tailscale on 2025-08-08.
-export tailscale_version='0-1.86.2-1-42'
-export tailscale_verification_hash='652655ec2430f76b64ecb236ab6c1d603ea374c62615c5e8d15401f1c5f05c40'
-
 main "${@}"

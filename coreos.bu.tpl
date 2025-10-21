@@ -91,12 +91,6 @@ storage:
       with_mount_unit: true
 
 
-  directories:
-    - path: /etc/sysupdate.d
-    - path: /var/lib/extensions
-    - path: /var/lib/extensions.d
-
-
   files:
     - path: /etc/hostname
       mode: 0644
@@ -112,13 +106,6 @@ storage:
       contents:
         inline: |
           export EDITOR=vim
-
-    - path: /var/lib/extensions/tailscale.raw
-      overwrite: true
-      contents:
-        source: https://extensions.fcos.fr/extensions/tailscale/tailscale-$tailscale_version-x86-64.raw
-        verification:
-          hash: sha256-$tailscale_verification_hash
 
     - path: /etc/tailscale.authkey
       overwrite: true
@@ -142,9 +129,9 @@ storage:
       overwrite: true
       mode: 0755
       contents:
-        source: "https://github.com/k3s-io/k3s/releases/download/v1.33.3%2Bk3s1/k3s"
+        source: "https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s"
         verification:
-          hash: "sha256-f03cad6610cf5b2903d8a9ac3d6716690e53dab461b09c07b0c913a262166abc"
+          hash: "sha256-ec8958fe1363a32d50e028b5e3411c04b0dbd0316fab33524e8094352b78f6a3"
 
     - path: /etc/rancher/k3s/kubelet.config
       mode: 0644
@@ -155,7 +142,6 @@ storage:
           shutdownGracePeriod: 60s
           shutdownGracePeriodCriticalPods: 10s
 
-    # skip traefik install
     - path: /var/lib/rancher/k3s/server/manifests/traefik.yaml.skip
       mode: 0644
 
@@ -190,8 +176,24 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    - name: systemd-sysext.service
+    - name: rpm-ostree-install-tailscale.service
       enabled: true
+      contents: |
+        [Unit]
+        Description=Layer tailscale with rpm-ostree
+        Wants=network-online.target
+        After=rpm-ostree-install-vim.service
+        Before=zincati.service
+        ConditionPathExists=!/usr/bin/tailscale
+        ConditionPathExists=!/usr/bin/tailscaled
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install --apply-live -y --allow-inactive tailscale
+
+        [Install]
+        WantedBy=multi-user.target
 
     - name: tailscaled.service
       enabled: true
@@ -249,7 +251,7 @@ systemd:
         [Unit]
         Description=Install k3s selinux
         Wants=network-online.target
-        After=network-online.target
+        After=rpm-ostree-install-tailscale.service
         Before=zincati.service
         ConditionPathExists=|!/usr/share/selinux/packages/k3s.pp
 
@@ -267,7 +269,7 @@ systemd:
         [Unit]
         Description=Install helm
         Wants=network-online.target
-        After=network-online.target
+        After=rpm-ostree-install-k3s-selinux.service
         Before=zincati.service
         ConditionPathExists=|!/usr/bin/helm
 
