@@ -4,11 +4,7 @@ This sets up my homelab that runs [Fedora CoreOS](https://fedoraproject.org/core
 
 This is a fully unattended install of CoreOS that currently:
 * sets up an ephemeral tailscale node.
-* provisions k3s, installs helm
-* sets up nfs mount
-
-and will:
-* automatically set up argocd for fetching custom helm charts
+* sets up a nfs mount
 
 
 ## Motivation
@@ -23,16 +19,10 @@ Nothing is inherently wrong with my previous approach, but I'd like to shake it 
 3. have fun along the way
 
 
-### Learn Something New
-At my `$DAY_JOB`, we are on the precipice of adopting a container orchestrator.  I would like to sharpen my skills in the lingua franca of this space, kubernetes.  I will be installing k3s on my homelab.
-
-As part of this overhaul, I would like to try something different than the traditional configuration management approach.  In my previous homelab, I've used ansible to configure the OS as well as emplace my docker compose file that defines the services that I run.  At my `$DAY_JOB` I get to use Chef for managing the fleet of hardware.  Immutable operating systems seem like an interesting alternative to the traditional CM tools.  I played with the idea of using [NixOS](https://nixos.org/), [Flatcar](https://www.flatcar.org/), and CoreOS.  I have previous experience with NixOS, and it's what I daily drive on my laptop.  I believe NixOS requires more onboarding effort than most orgs have appetite for.  For the reason of learning something useful for my `$DAY_JOB`, as well as learning something new, I decided to discard NixOS.  I played with both Flatcar and CoreOS.  Ultimately, I am indifferent between the two; if I choose wrong, I'll simply back out.  So let's try CoreOS for now!
-
-
 ### Reduce Operational Toil
 My needs for my homelab are pretty small.  I run something like 20 services.  At my lab's peak, I was running something on the order of 50 services.  The workload can vary based on my interests at a given time.  One of the biggest pains was keeping things up to date.
 
-Historically, I have managed all services in docker compose.  My previous approach was to have a cronjob that runs once a week to remind me to update my containers.  About once a month, I would run a premade script to do an upgrade.  This ratio of four alerts to one action is not desirable.  In fact, it's not desirable to get a notification at all; instead it would be preferable that the services automatically upgrade, and rollback and notify on failure.  This is a perfectly kubernetes shaped problem.
+Historically, I have managed all services in docker compose.  My previous approach was to have a cronjob that runs once a week to remind me to update my containers.  About once a month, I would run a premade script to do an upgrade.  This ratio of four alerts to one action is not desirable.  In fact, it's not desirable to get a notification at all; instead it would be preferable that the services automatically upgrade, and rollback and notify on failure.
 
 For the operating system, I would upgrade once every couple of years.  I would put it off because it was painful to upgrade.  I would run some RHEL provided script, and then go modify my ansible playbooks that hardened the OS.  This caused downtime and usually occupied half of a precious weekend day.  This is where an OS such as CoreOS comes in.  The chromeOS-like approach of automatic updates on a minimal surface area is appealing to me.  I like the idea of easy rollbacks as well.
 
@@ -93,4 +83,3 @@ To cut down on the period of the iteration cycle, you can skip replacing the liv
 ## Acknowledgements
 
  - [Timothée Ravier's](https://github.com/travier) work on [systemd-sysext on CoreOS](https://extensions.fcos.fr)
- - [Will Daly's guide](https://devnonsense.com/posts/k3s-on-fedora-coreos-bare-metal/#install-k3s) on installing k3s on CoreOS.
