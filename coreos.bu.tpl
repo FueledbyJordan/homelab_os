@@ -113,37 +113,11 @@ storage:
       contents:
         inline: "{{ op://homelab/tailscale ephemeral authkey/credential }}?preauthorized=true"
 
-    - path: /etc/yum.repos.d/rancher-k3s-common.repo
-      mode: 0644
-      contents:
-        inline: |
-          [rancher-k3s-common-stable]
-          name=Rancher K3s Common (stable)
-          baseurl=https://rpm.rancher.io/k3s/stable/common/coreos/noarch
-          enabled=1
-          gpgcheck=1
-          repo_gpgcheck=0
-          gpgkey=https://rpm.rancher.io/public.key
 
-    - path: /usr/local/bin/k3s
-      overwrite: true
-      mode: 0755
-      contents:
-        source: "https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s"
-        verification:
-          hash: "sha256-ec8958fe1363a32d50e028b5e3411c04b0dbd0316fab33524e8094352b78f6a3"
-
-    - path: /etc/rancher/k3s/kubelet.config
-      mode: 0644
-      contents:
-        inline: |
-          apiVersion: kubelet.config.k8s.io/v1beta1
-          kind: KubeletConfiguration
-          shutdownGracePeriod: 60s
-          shutdownGracePeriodCriticalPods: 10s
-
-    - path: /var/lib/rancher/k3s/server/manifests/traefik.yaml.skip
-      mode: 0644
+  # enable doesn't work, so we have to manually create the link to ensure tailscale starts
+  links:
+    - path: /etc/systemd/system/multi-user.target.wants/tailscaled.service
+      target: /usr/lib/systemd/system/tailscaled.service
 
 
 systemd:
@@ -171,7 +145,6 @@ systemd:
         RemainAfterExit=yes
         ExecStart=/usr/bin/rpm-ostree install -y --allow-inactive vim
         ExecStart=/bin/touch /var/lib/%N.stamp
-        ExecStart=/bin/systemctl --no-block reboot
 
         [Install]
         WantedBy=multi-user.target
@@ -195,15 +168,33 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    - name: tailscaled.service
+    - name: rpm-ostree-install-python.service
       enabled: true
+      contents: |
+        [Unit]
+        Description=Layer python with rpm-ostree
+        Wants=network-online.target
+        After=rpm-ostree-install-tailscale.service
+        Before=zincati.service
+        ConditionPathExists=!/usr/bin/python3
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install -y --allow-inactive python3
+        ExecStart=/usr/bin/systemctl --no-block reboot
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: tailscaled.service
       dropins:
       - name: 20-ephemeral.conf
         contents: |
           [Service]
           EnvironmentFile=
           ExecStart=
-          ExecStart=/usr/bin/tailscaled --state=mem: --socket=/run/tailscale/tailscaled.sock --port='41641'
+          ExecStart=/usr/bin/tailscaled --state=mem: --socket=/run/tailscale/tailscaled.sock --port=41641
 
     # TODO: use systemd credentials instead of emplacing authkey directly
     - name: tailscale-up.service
@@ -211,7 +202,8 @@ systemd:
       contents: |
         [Unit]
         Description=Perform headless login to tailscale
-        After=tailscaled.service
+        After=tailscaled.service network-online.target
+        Wants=network-online.target
 
         [Service]
         Type=oneshot
@@ -237,96 +229,15 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Before=remote-fs.target
+        Description=NFS Mount
+        After=network-online.target
+        Wants=network-online.target
+
         [Mount]
         What={{ op://homelab/nfs/URL }}:{{ op://homelab/nfs/path }}
         Where=/var/nfs
         Type=nfs
-        [Install]
-        WantedBy=remote-fs.target
-
-    - name: rpm-ostree-install-k3s-selinux.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Install k3s selinux
-        Wants=network-online.target
-        After=rpm-ostree-install-tailscale.service
-        Before=zincati.service
-        ConditionPathExists=|!/usr/share/selinux/packages/k3s.pp
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes k3s-selinux
-
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: rpm-ostree-install-helm.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Install helm
-        Wants=network-online.target
-        After=rpm-ostree-install-k3s-selinux.service
-        Before=zincati.service
-        ConditionPathExists=|!/usr/bin/helm
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes helm
-
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: k3s.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Run K3s
-        Wants=network-online.target
-        After=network-online.target
-
-        [Service]
-        Type=notify
-        EnvironmentFile=-/etc/default/%N
-        EnvironmentFile=-/etc/sysconfig/%N
-        EnvironmentFile=-/etc/systemd/system/%N.env
-        KillMode=process
-        Delegate=yes
-        LimitNOFILE=1048576
-        LimitNPROC=infinity
-        LimitCORE=infinity
-        TasksMax=infinity
-        TimeoutStartSec=0
-        Restart=always
-        RestartSec=5s
-        ExecStartPre=-/sbin/modprobe br_netfilter
-        ExecStartPre=-/sbin/modprobe overlay
-        ExecStart=/usr/local/bin/k3s server --kubelet-arg="config=/etc/rancher/k3s/kubelet.config"
-
-        [Install]
-        WantedBy=multi-user.target
-
-    # Node shutdown leaves pods with status.phase=Failed and status.reason=Shutdown,
-    # so delete them automatically on startup.
-    # This may delete some pods that failed for other reasons, but --field-selector doesn't
-    # currently support status.reason, so it's the best we can do.
-    - name: k3s-cleanup-shutdown-pods.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Cleanup pods terminated by node shutdown
-        Wants=k3s.service
-
-        [Service]
-        Type=oneshot
-        Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-        ExecStart=/usr/local/bin/k3s kubectl delete pods --field-selector status.phase=Failed -A --ignore-not-found=true
-        Restart=on-failure
-        RestartSec=30
+        Options=_netdev
 
         [Install]
         WantedBy=multi-user.target
