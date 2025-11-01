@@ -107,6 +107,12 @@ storage:
         inline: |
           export EDITOR=vim
 
+    - path: /etc/ssh/sshd_config.d/10-maxstartups.conf
+      mode: 0644
+      contents:
+        inline: |
+          MaxStartups 150:30:200
+
     - path: /etc/tailscale.authkey
       overwrite: true
       mode: 0400
