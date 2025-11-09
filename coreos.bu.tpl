@@ -27,6 +27,13 @@ storage:
           number: 5
           size_mib: 32768
 
+        - label: backup
+          number: 6
+          size_mib: 65536
+
+        - label: log
+          number: 7
+
     - device: $inject_drive1
       partitions:
         - label: data-1
@@ -56,6 +63,20 @@ storage:
     - device: /dev/disk/by-partlabel/swap
       format: swap
       wipe_filesystem: true
+      with_mount_unit: true
+
+    - device: /dev/disk/by-partlabel/backup
+      path: /var/backup
+      label: log
+      format: xfs
+      wipe_filesystem: false
+      with_mount_unit: true
+
+    - device: /dev/disk/by-partlabel/log
+      path: /var/log
+      label: log
+      format: xfs
+      wipe_filesystem: false
       with_mount_unit: true
 
 
