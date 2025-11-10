@@ -90,6 +90,19 @@ storage:
       append:
         - inline: {{ op://homelab/nfs/IP }} {{ op://homelab/nfs/URL }}
 
+    - path: /etc/zincati/config.d/55-updates-strategy.toml
+      overwrite: true
+      contents:
+        inline: |
+          [updates]
+          strategy = "periodic"
+          [updates.periodic]
+          time_zone = "America/New_York"
+          [[updates.periodic.window]]
+          days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ]
+          start_time = "05:00"
+          length_minutes = 30
+
     - path: /etc/profile.d/zz-default-editor.sh
       overwrite: true
       contents:
@@ -98,6 +111,7 @@ storage:
 
     - path: /etc/ssh/sshd_config.d/10-maxstartups.conf
       mode: 0644
+      overwrite: true
       contents:
         inline: |
           MaxStartups 150:30:200
