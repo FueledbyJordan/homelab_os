@@ -196,6 +196,9 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
+    - name: docker.service
+      enabled: true
+
     - name: tailscaled.service
       dropins:
       - name: 20-ephemeral.conf
